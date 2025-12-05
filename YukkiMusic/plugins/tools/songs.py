@@ -13,6 +13,7 @@ import re
 import yt_dlp
 from pykeyboard import InlineKeyboard
 from pyrogram import filters
+from pyrogram.enums import ChatAction
 from pyrogram.types import (InlineKeyboardButton,
                             InlineKeyboardMarkup, InputMediaAudio,
                             InputMediaVideo, Message)
@@ -21,6 +22,7 @@ from config import (BANNED_USERS, SONG_DOWNLOAD_DURATION,
                     SONG_DOWNLOAD_DURATION_LIMIT)
 from strings import get_command
 from YukkiMusic import YouTube, app
+from YukkiMusic.platforms.Youtube import get_ytdl_options
 from YukkiMusic.utils.decorators.language import language, languageCB
 from YukkiMusic.utils.formatters import convert_bytes
 from YukkiMusic.utils.inline.song import song_markup
@@ -154,24 +156,41 @@ async def song_helper_cb(client, CallbackQuery, _):
             return await CallbackQuery.edit_message_text(_["song_7"])
         keyboard = InlineKeyboard()
         done = []
+        # Common audio format IDs: 140 (m4a 128k), 251 (webm opus), 250, 249
+        audio_formats = []
         for x in formats_available:
-            check = x["format"]
-            if "audio" in check:
-                if x["filesize"] is None:
+            check = x.get("format", "")
+            format_id = x.get("format_id", "")
+            # Check if it's audio only format
+            if "audio" in check.lower() or x.get("vcodec") == "none":
+                filesize = x.get("filesize") or x.get("filesize_approx")
+                abr = x.get("abr", 0) or 0
+                form = x.get("format_note", "").title() or f"{int(abr)}kbps"
+                if not form or form == "0Kbps":
+                    form = "Standard"
+                # Skip duplicates
+                if form in done:
                     continue
-                form = x["format_note"].title()
-                if form not in done:
-                    done.append(form)
+                done.append(form)
+                if filesize:
+                    sz = convert_bytes(filesize)
+                    text = f"{form} Audio = {sz}"
                 else:
-                    continue
-                sz = convert_bytes(x["filesize"])
-                fom = x["format_id"]
+                    text = f"{form} Audio"
                 keyboard.row(
                     InlineKeyboardButton(
-                        text=f"{form} Quality Audio = {sz}",
-                        callback_data=f"song_download {stype}|{fom}|{vidid}",
+                        text=text,
+                        callback_data=f"song_download {stype}|{format_id}|{vidid}",
                     ),
                 )
+        # If no formats found, add default format 140 (m4a)
+        if not done:
+            keyboard.row(
+                InlineKeyboardButton(
+                    text="Best Audio Quality",
+                    callback_data=f"song_download {stype}|140|{vidid}",
+                ),
+            )
         keyboard.row(
             InlineKeyboardButton(
                 text=_["BACK_BUTTON"],
@@ -195,19 +214,42 @@ async def song_helper_cb(client, CallbackQuery, _):
         keyboard = InlineKeyboard()
         # AVC Formats Only [ YUKKI MUSIC BOT ]
         done = [160, 133, 134, 135, 136, 137, 298, 299, 264, 304, 266]
+        found_formats = False
         for x in formats_available:
-            check = x["format"]
-            if x["filesize"] is None:
+            check = x.get("format", "")
+            format_id = x.get("format_id", "")
+            try:
+                if int(format_id) not in done:
+                    continue
+            except:
                 continue
-            if int(x["format_id"]) not in done:
-                continue
-            sz = convert_bytes(x["filesize"])
-            ap = check.split("-")[1]
-            to = f"{ap} = {sz}"
+            filesize = x.get("filesize") or x.get("filesize_approx")
+            if filesize:
+                sz = convert_bytes(filesize)
+                try:
+                    ap = check.split("-")[1]
+                except:
+                    ap = x.get("format_note", "Video")
+                to = f"{ap} = {sz}"
+            else:
+                try:
+                    ap = check.split("-")[1]
+                except:
+                    ap = x.get("format_note", "Video")
+                to = f"{ap}"
             keyboard.row(
                 InlineKeyboardButton(
                     text=to,
-                    callback_data=f"song_download {stype}|{x['format_id']}|{vidid}",
+                    callback_data=f"song_download {stype}|{format_id}|{vidid}",
+                )
+            )
+            found_formats = True
+        # If no specific formats found, add best video option
+        if not found_formats:
+            keyboard.row(
+                InlineKeyboardButton(
+                    text="Best Video Quality",
+                    callback_data=f"song_download {stype}|best|{vidid}",
                 )
             )
         keyboard.row(
@@ -241,7 +283,9 @@ async def song_download_cb(client, CallbackQuery, _):
     stype, format_id, vidid = callback_request.split("|")
     mystic = await CallbackQuery.edit_message_text(_["song_8"])
     yturl = f"https://www.youtube.com/watch?v={vidid}"
-    with yt_dlp.YoutubeDL({"quiet": True}) as ytdl:
+    ydl_opts = get_ytdl_options()
+    ydl_opts["quiet"] = True
+    with yt_dlp.YoutubeDL(ydl_opts) as ytdl:
         x = ytdl.extract_info(yturl, download=False)
     title = (x["title"]).title()
     title = re.sub(r"\W+", " ", title)
@@ -273,14 +317,20 @@ async def song_download_cb(client, CallbackQuery, _):
         await mystic.edit_text(_["song_11"])
         await app.send_chat_action(
             chat_id=CallbackQuery.message.chat.id,
-            action="upload_video",
+            action=ChatAction.UPLOAD_VIDEO,
         )
         try:
             await CallbackQuery.edit_message_media(media=med)
         except Exception as e:
             print(e)
             return await mystic.edit_text(_["song_10"])
-        os.remove(file_path)
+        try:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            if thumb_image_path and os.path.exists(thumb_image_path):
+                os.remove(thumb_image_path)
+        except:
+            pass
     elif stype == "audio":
         try:
             filename = await YouTube.download(
@@ -302,11 +352,17 @@ async def song_download_cb(client, CallbackQuery, _):
         await mystic.edit_text(_["song_11"])
         await app.send_chat_action(
             chat_id=CallbackQuery.message.chat.id,
-            action="upload_audio",
+            action=ChatAction.UPLOAD_AUDIO,
         )
         try:
             await CallbackQuery.edit_message_media(media=med)
         except Exception as e:
             print(e)
             return await mystic.edit_text(_["song_10"])
-        os.remove(filename)
+        try:
+            if os.path.exists(filename):
+                os.remove(filename)
+            if thumb_image_path and os.path.exists(thumb_image_path):
+                os.remove(thumb_image_path)
+        except:
+            pass

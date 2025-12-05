@@ -349,8 +349,12 @@ class YouTubeAPI:
             return xyz
 
         def song_video_dl():
-            formats = f"{format_id}+140"
-            fpath = f"downloads/{title}"
+            # Use format_id with fallback to best available
+            if format_id and format_id != "best":
+                formats = f"{format_id}+bestaudio/best[ext=mp4]/best"
+            else:
+                formats = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
+            fpath = f"downloads/{title}.mp4"
             ydl_optssx = get_ytdl_options({
                 "format": formats,
                 "outtmpl": fpath,
@@ -359,11 +363,17 @@ class YouTubeAPI:
             })
             x = yt_dlp.YoutubeDL(ydl_optssx)
             x.download([link])
+            return fpath
 
         def song_audio_dl():
-            fpath = f"downloads/{title}.%(ext)s"
+            fpath = f"downloads/{title}.mp3"
+            # Use format_id with fallback to best audio
+            if format_id and format_id not in ["140", "best"]:
+                audio_format = f"{format_id}/bestaudio/best"
+            else:
+                audio_format = "bestaudio/best"
             ydl_optssx = get_ytdl_options({
-                "format": format_id,
+                "format": audio_format,
                 "outtmpl": fpath,
                 "prefer_ffmpeg": True,
                 "postprocessors": [
@@ -376,14 +386,13 @@ class YouTubeAPI:
             })
             x = yt_dlp.YoutubeDL(ydl_optssx)
             x.download([link])
+            return fpath
 
         if songvideo:
-            await loop.run_in_executor(None, song_video_dl)
-            fpath = f"downloads/{title}.mp4"
+            fpath = await loop.run_in_executor(None, song_video_dl)
             return fpath
         elif songaudio:
-            await loop.run_in_executor(None, song_audio_dl)
-            fpath = f"downloads/{title}.mp3"
+            fpath = await loop.run_in_executor(None, song_audio_dl)
             return fpath
         elif video:
             if await is_on_off(config.YTDOWNLOADER):
