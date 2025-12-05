@@ -23,6 +23,7 @@ usersdb = mongodb.tgusersdb
 playlistdb = mongodb.playlist
 blockeddb = mongodb.blockedusers
 privatedb = mongodb.privatechats
+bitratedb = mongodb.bitrate
 
 
 # Playlist
@@ -438,3 +439,36 @@ async def remove_banned_user(user_id: int):
     if not is_gbanned:
         return
     return await blockeddb.delete_one({"user_id": user_id})
+
+
+# Bitrate Settings (Persistent)
+
+
+async def set_video_bitrate_db(chat_id: int, bitrate: str):
+    await bitratedb.update_one(
+        {"chat_id": chat_id},
+        {"$set": {"video_bitrate": bitrate}},
+        upsert=True,
+    )
+
+
+async def get_video_bitrate_db(chat_id: int) -> str:
+    data = await bitratedb.find_one({"chat_id": chat_id})
+    if data:
+        return data.get("video_bitrate")
+    return None
+
+
+async def set_audio_bitrate_db(chat_id: int, bitrate: str):
+    await bitratedb.update_one(
+        {"chat_id": chat_id},
+        {"$set": {"audio_bitrate": bitrate}},
+        upsert=True,
+    )
+
+
+async def get_audio_bitrate_db(chat_id: int) -> str:
+    data = await bitratedb.find_one({"chat_id": chat_id})
+    if data:
+        return data.get("audio_bitrate")
+    return None

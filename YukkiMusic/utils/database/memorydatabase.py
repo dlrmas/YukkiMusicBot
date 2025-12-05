@@ -460,19 +460,32 @@ async def maintenance_on():
 # Audio Video Limit
 
 from pytgcalls.types import AudioQuality, VideoQuality
+from YukkiMusic.utils.database.mongodatabase import (
+    set_video_bitrate_db,
+    get_video_bitrate_db,
+    set_audio_bitrate_db,
+    get_audio_bitrate_db,
+)
 
 
 async def save_audio_bitrate(chat_id: int, bitrate: str):
     audio[chat_id] = bitrate
+    await set_audio_bitrate_db(chat_id, bitrate)
 
 
 async def save_video_bitrate(chat_id: int, bitrate: str):
     video[chat_id] = bitrate
+    await set_video_bitrate_db(chat_id, bitrate)
 
 
 async def get_aud_bit_name(chat_id: int) -> str:
     mode = audio.get(chat_id)
     if not mode:
+        # Try to get from database
+        mode = await get_audio_bitrate_db(chat_id)
+        if mode:
+            audio[chat_id] = mode  # Cache it
+            return mode
         return "High"
     return mode
 
@@ -480,6 +493,11 @@ async def get_aud_bit_name(chat_id: int) -> str:
 async def get_vid_bit_name(chat_id: int) -> str:
     mode = video.get(chat_id)
     if not mode:
+        # Try to get from database
+        mode = await get_video_bitrate_db(chat_id)
+        if mode:
+            video[chat_id] = mode  # Cache it
+            return mode
         if PRIVATE_BOT_MODE == str(True):
             return "High"
         else:
@@ -489,6 +507,11 @@ async def get_vid_bit_name(chat_id: int) -> str:
 
 async def get_audio_bitrate(chat_id: int):
     mode = audio.get(chat_id)
+    if not mode:
+        # Try to get from database
+        mode = await get_audio_bitrate_db(chat_id)
+        if mode:
+            audio[chat_id] = mode  # Cache it
     if not mode:
         return AudioQuality.MEDIUM
     if str(mode) == "High":
@@ -502,6 +525,11 @@ async def get_audio_bitrate(chat_id: int):
 
 async def get_video_bitrate(chat_id: int):
     mode = video.get(chat_id)
+    if not mode:
+        # Try to get from database
+        mode = await get_video_bitrate_db(chat_id)
+        if mode:
+            video[chat_id] = mode  # Cache it
     if not mode:
         if PRIVATE_BOT_MODE == str(True):
             return VideoQuality.HD_720p
