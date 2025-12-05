@@ -10,4 +10,4 @@ __pycache__/
 *.session-journal
 .vscode
 .venv
-cookies
+cookies/music.txt
