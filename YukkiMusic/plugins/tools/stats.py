@@ -38,8 +38,6 @@ from YukkiMusic.utils.inline.stats import (back_stats_buttons,
                                            stats_buttons,
                                            top_ten_stats_markup)
 
-loop = asyncio.get_running_loop()
-
 # Commands
 GSTATS_COMMAND = get_command("GSTATS_COMMAND")
 STATS_COMMAND = get_command("STATS_COMMAND")
@@ -48,7 +46,7 @@ STATS_COMMAND = get_command("STATS_COMMAND")
 @app.on_message(
     filters.command(STATS_COMMAND)
     & filters.group
-    & ~filters.edited
+    
     & ~BANNED_USERS
 )
 @language
@@ -66,7 +64,7 @@ async def stats_global(client, message: Message, _):
 @app.on_message(
     filters.command(GSTATS_COMMAND)
     & filters.group
-    & ~filters.edited
+    
     & ~BANNED_USERS
 )
 @language
@@ -100,9 +98,10 @@ async def gstats_global(client, message: Message, _):
                 videoid = vidid
                 co = count
             break
-        return videoid, co
+            return videoid, co
 
     try:
+        loop = asyncio.get_running_loop()
         videoid, co = await loop.run_in_executor(None, get_stats)
     except Exception as e:
         print(e)
@@ -210,6 +209,7 @@ async def top_users_ten(client, CallbackQuery: CallbackQuery, _):
         return msg, list_arranged
 
     try:
+        loop = asyncio.get_running_loop()
         msg, list_arranged = await loop.run_in_executor(
             None, get_stats
         )

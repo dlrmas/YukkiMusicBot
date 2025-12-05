@@ -10,6 +10,7 @@
 import asyncio
 
 from pyrogram import filters
+from pyrogram.enums import ChatType
 from pyrogram.types import (InlineKeyboardButton,
                             InlineKeyboardMarkup, Message)
 from youtubesearchpython.__future__ import VideosSearch
@@ -32,13 +33,11 @@ from YukkiMusic.utils.decorators.language import LanguageStart
 from YukkiMusic.utils.inline import (help_pannel, private_panel,
                                      start_pannel)
 
-loop = asyncio.get_running_loop()
-
 
 @app.on_message(
     filters.command(get_command("START_COMMAND"))
     & filters.private
-    & ~filters.edited
+    
     & ~BANNED_USERS
 )
 @LanguageStart
@@ -98,6 +97,7 @@ async def start_comm(client, message: Message, _):
                 return videoid, msg
 
             try:
+                loop = asyncio.get_running_loop()
                 videoid, msg = await loop.run_in_executor(
                     None, get_stats
                 )
@@ -224,7 +224,7 @@ async def start_comm(client, message: Message, _):
 @app.on_message(
     filters.command(get_command("START_COMMAND"))
     & filters.group
-    & ~filters.edited
+    
     & ~BANNED_USERS
 )
 @LanguageStart
@@ -258,7 +258,7 @@ async def welcome(client, message: Message):
             _ = get_string(language)
             if member.id == app.id:
                 chat_type = message.chat.type
-                if chat_type != "supergroup":
+                if chat_type != ChatType.SUPERGROUP:
                     await message.reply_text(_["start_6"])
                     return await app.leave_chat(message.chat.id)
                 if chat_id in await blacklisted_chats():

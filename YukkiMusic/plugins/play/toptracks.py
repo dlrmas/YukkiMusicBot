@@ -22,8 +22,6 @@ from YukkiMusic.utils.inline.playlist import (botplaylist_markup,
                                               top_play_markup)
 from YukkiMusic.utils.stream.stream import stream
 
-loop = asyncio.get_running_loop()
-
 
 @app.on_callback_query(
     filters.regex("get_playmarkup") & ~BANNED_USERS
@@ -113,9 +111,10 @@ async def server_to_play(client, CallbackQuery, _):
             return mystic.edit(
                 _["tracks_2"].format(what), reply_markup=upl
             )
-        return details
+            return details
 
     try:
+        loop = asyncio.get_running_loop()
         details = await loop.run_in_executor(None, get_stats)
     except Exception as e:
         print(e)

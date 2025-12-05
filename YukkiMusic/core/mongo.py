@@ -18,7 +18,7 @@ from ..logging import LOGGER
 TEMP_MONGODB = "mongodb+srv://shikhar:shikhar@cluster0.6xzlh.mongodb.net/myFirstDatabase?retryWrites=true&w=majority"
 
 
-if config.MONGO_DB_URI is None:
+if not config.MONGO_DB_URI:
     LOGGER(__name__).warning(
         "No MONGO DB URL found.. Your Bot will work on Yukki's Database"
     )

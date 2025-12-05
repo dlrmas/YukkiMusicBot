@@ -1,1 +1,5 @@
+rm -r downloads
+rm -r Yukki.session
+rm -r YukkiMusicBot.session
+rm -r YukkiMusicBot.session-journal
 python3 -m YukkiMusic
