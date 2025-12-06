@@ -10,6 +10,7 @@
 # Fix bug dan update https://github.com/dlrmas
 #
 
+from .callbacks import *
 from .channelplay import *
 from .database import *
 from .decorators import *

@@ -27,10 +27,20 @@ from YukkiMusic.utils.thumbnails import gen_thumb
 wrong = {}
 
 
+async def safe_answer(CallbackQuery, text=None, show_alert=False):
+    """Safely answer callback query, ignoring expired queries."""
+    try:
+        if text:
+            return await safe_answer(CallbackQuery, text, show_alert=show_alert)
+        return await safe_answer(CallbackQuery)
+    except:
+        pass
+
+
 @app.on_callback_query(filters.regex("PanelMarkup") & ~BANNED_USERS)
 @languageCB
 async def markup_panel(client, CallbackQuery: CallbackQuery, _):
-    await CallbackQuery.answer()
+    await safe_answer(CallbackQuery)
     callback_data = CallbackQuery.data.strip()
     callback_request = callback_data.split(None, 1)[1]
     videoid, chat_id = callback_request.split("|")
@@ -50,7 +60,7 @@ async def markup_panel(client, CallbackQuery: CallbackQuery, _):
 @app.on_callback_query(filters.regex("MainMarkup") & ~BANNED_USERS)
 @languageCB
 async def del_back_playlist(client, CallbackQuery, _):
-    await CallbackQuery.answer()
+    await safe_answer(CallbackQuery)
     callback_data = CallbackQuery.data.strip()
     callback_request = callback_data.split(None, 1)[1]
     videoid, chat_id = callback_request.split("|")
@@ -73,7 +83,7 @@ async def del_back_playlist(client, CallbackQuery, _):
 @app.on_callback_query(filters.regex("Pages") & ~BANNED_USERS)
 @languageCB
 async def del_back_playlist(client, CallbackQuery, _):
-    await CallbackQuery.answer()
+    await safe_answer(CallbackQuery)
     callback_data = CallbackQuery.data.strip()
     callback_request = callback_data.split(None, 1)[1]
     state, pages, videoid, chat = callback_request.split("|")
@@ -113,7 +123,7 @@ async def del_back_playlist(client, CallbackQuery, _):
     command, chat = callback_request.split("|")
     chat_id = int(chat)
     if not await is_active_chat(chat_id):
-        return await CallbackQuery.answer(
+        return await safe_answer(CallbackQuery, 
             _["general_6"], show_alert=True
         )
     mention = CallbackQuery.from_user.mention
@@ -124,20 +134,20 @@ async def del_back_playlist(client, CallbackQuery, _):
         if CallbackQuery.from_user.id not in SUDOERS:
             admins = adminlist.get(CallbackQuery.message.chat.id)
             if not admins:
-                return await CallbackQuery.answer(
+                return await safe_answer(CallbackQuery, 
                     _["admin_18"], show_alert=True
                 )
             else:
                 if CallbackQuery.from_user.id not in admins:
-                    return await CallbackQuery.answer(
+                    return await safe_answer(CallbackQuery, 
                         _["admin_19"], show_alert=True
                     )
     if command == "Pause":
         if not await is_music_playing(chat_id):
-            return await CallbackQuery.answer(
+            return await safe_answer(CallbackQuery, 
                 _["admin_1"], show_alert=True
             )
-        await CallbackQuery.answer()
+        await safe_answer(CallbackQuery)
         await music_off(chat_id)
         await Yukki.pause_stream(chat_id)
         await CallbackQuery.message.reply_text(
@@ -145,17 +155,17 @@ async def del_back_playlist(client, CallbackQuery, _):
         )
     elif command == "Resume":
         if await is_music_playing(chat_id):
-            return await CallbackQuery.answer(
+            return await safe_answer(CallbackQuery, 
                 _["admin_3"], show_alert=True
             )
-        await CallbackQuery.answer()
+        await safe_answer(CallbackQuery)
         await music_on(chat_id)
         await Yukki.resume_stream(chat_id)
         await CallbackQuery.message.reply_text(
             _["admin_4"].format(mention)
         )
     elif command == "Stop" or command == "End":
-        await CallbackQuery.answer()
+        await safe_answer(CallbackQuery)
         await Yukki.stop_stream(chat_id)
         await set_loop(chat_id, 0)
         await CallbackQuery.message.reply_text(
@@ -163,10 +173,10 @@ async def del_back_playlist(client, CallbackQuery, _):
         )
     elif command == "Mute":
         if await is_muted(chat_id):
-            return await CallbackQuery.answer(
+            return await safe_answer(CallbackQuery, 
                 _["admin_5"], show_alert=True
             )
-        await CallbackQuery.answer()
+        await safe_answer(CallbackQuery)
         await mute_on(chat_id)
         await Yukki.mute_stream(chat_id)
         await CallbackQuery.message.reply_text(
@@ -174,17 +184,17 @@ async def del_back_playlist(client, CallbackQuery, _):
         )
     elif command == "Unmute":
         if not await is_muted(chat_id):
-            return await CallbackQuery.answer(
+            return await safe_answer(CallbackQuery, 
                 _["admin_7"], show_alert=True
             )
-        await CallbackQuery.answer()
+        await safe_answer(CallbackQuery)
         await mute_off(chat_id)
         await Yukki.unmute_stream(chat_id)
         await CallbackQuery.message.reply_text(
             _["admin_8"].format(mention)
         )
     elif command == "Loop":
-        await CallbackQuery.answer()
+        await safe_answer(CallbackQuery)
         await set_loop(chat_id, 3)
         await CallbackQuery.message.reply_text(
             _["admin_25"].format(mention, 3)
@@ -192,22 +202,22 @@ async def del_back_playlist(client, CallbackQuery, _):
     elif command == "Shuffle":
         check = db.get(chat_id)
         if not check:
-            return await CallbackQuery.answer(
+            return await safe_answer(CallbackQuery, 
                 _["admin_21"], show_alert=True
             )
         try:
             popped = check.pop(0)
         except:
-            return await CallbackQuery.answer(
+            return await safe_answer(CallbackQuery, 
                 _["admin_22"], show_alert=True
             )
         check = db.get(chat_id)
         if not check:
             check.insert(0, popped)
-            return await CallbackQuery.answer(
+            return await safe_answer(CallbackQuery, 
                 _["admin_22"], show_alert=True
             )
-        await CallbackQuery.answer()
+        await safe_answer(CallbackQuery)
         random.shuffle(check)
         check.insert(0, popped)
         await CallbackQuery.message.reply_text(
@@ -244,7 +254,7 @@ async def del_back_playlist(client, CallbackQuery, _):
                 return await Yukki.stop_stream(chat_id)
             except:
                 return
-        await CallbackQuery.answer()
+        await safe_answer(CallbackQuery)
         queued = check[0]["file"]
         title = (check[0]["title"]).title()
         user = check[0]["by"]
@@ -378,17 +388,17 @@ async def del_back_playlist(client, CallbackQuery, _):
     else:
         playing = db.get(chat_id)
         if not playing:
-            return await CallbackQuery.answer(
+            return await safe_answer(CallbackQuery, 
                 _["queue_2"], show_alert=True
             )
         duration_seconds = int(playing[0]["seconds"])
         if duration_seconds == 0:
-            return await CallbackQuery.answer(
+            return await safe_answer(CallbackQuery, 
                 _["admin_30"], show_alert=True
             )
         file_path = playing[0]["file"]
         if "index_" in file_path or "live_" in file_path:
-            return await CallbackQuery.answer(
+            return await safe_answer(CallbackQuery, 
                 _["admin_30"], show_alert=True
             )
         duration_played = int(playing[0]["played"])
@@ -400,7 +410,7 @@ async def del_back_playlist(client, CallbackQuery, _):
         if int(command) in [1, 3]:
             if (duration_played - duration_to_skip) <= 10:
                 bet = seconds_to_min(duration_played)
-                return await CallbackQuery.answer(
+                return await safe_answer(CallbackQuery, 
                     f"Bot is not able to seek due to total duration has been exceeded.\n\nCurrently played** {bet}** mins out of **{duration}** mins",
                     show_alert=True,
                 )
@@ -411,12 +421,12 @@ async def del_back_playlist(client, CallbackQuery, _):
                 - (duration_played + duration_to_skip)
             ) <= 10:
                 bet = seconds_to_min(duration_played)
-                return await CallbackQuery.answer(
+                return await safe_answer(CallbackQuery, 
                     f"Bot is not able to seek due to total duration has been exceeded.\n\nCurrently played** {bet}** mins out of **{duration}** mins",
                     show_alert=True,
                 )
             to_seek = duration_played + duration_to_skip + 1
-        await CallbackQuery.answer()
+        await safe_answer(CallbackQuery)
         mystic = await CallbackQuery.message.reply_text(_["admin_32"])
         if "vid_" in file_path:
             n, file_path = await YouTube.video(

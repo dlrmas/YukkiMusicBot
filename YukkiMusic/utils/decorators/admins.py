@@ -10,7 +10,10 @@
 # Fix bug dan update https://github.com/dlrmas
 #
 
+import logging
+
 from pyrogram.enums import ChatType
+from pyrogram.errors import QueryIdInvalid, MessageNotModified
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from config import adminlist
@@ -24,6 +27,8 @@ from YukkiMusic.utils.database import (get_authuser_names, get_cmode,
                                        is_nonadmin_chat)
 
 from ..formatters import int_to_alpha
+
+LOGGER = logging.getLogger(__name__)
 
 
 def AdminRightsCheck(mystic):
@@ -132,17 +137,28 @@ def ActualAdminCB(mystic):
     async def wrapper(client, CallbackQuery):
         if await is_maintenance() is False:
             if CallbackQuery.from_user.id not in SUDOERS:
-                return await CallbackQuery.answer(
-                    "Bot is under maintenance. Please wait for some time...",
-                    show_alert=True,
-                )
+                try:
+                    return await CallbackQuery.answer(
+                        "Bot is under maintenance. Please wait for some time...",
+                        show_alert=True,
+                    )
+                except QueryIdInvalid:
+                    return
         try:
             language = await get_lang(CallbackQuery.message.chat.id)
             _ = get_string(language)
         except:
             _ = get_string("en")
         if CallbackQuery.message.chat.type == ChatType.PRIVATE:
-            return await mystic(client, CallbackQuery, _)
+            try:
+                return await mystic(client, CallbackQuery, _)
+            except QueryIdInvalid:
+                LOGGER.debug("Callback query expired, ignoring")
+            except MessageNotModified:
+                LOGGER.debug("Message not modified, ignoring")
+            except Exception as e:
+                LOGGER.error(f"Error in callback: {e}")
+            return
         is_non_admin = await is_nonadmin_chat(
             CallbackQuery.message.chat.id
         )
@@ -153,9 +169,12 @@ def ActualAdminCB(mystic):
                     CallbackQuery.from_user.id,
                 )
             except:
-                return await CallbackQuery.answer(
-                    _["general_5"], show_alert=True
-                )
+                try:
+                    return await CallbackQuery.answer(
+                        _["general_5"], show_alert=True
+                    )
+                except QueryIdInvalid:
+                    return
             if not a.privileges or not a.privileges.can_manage_video_chats:
                 if CallbackQuery.from_user.id not in SUDOERS:
                     token = await int_to_alpha(
@@ -172,6 +191,13 @@ def ActualAdminCB(mystic):
                             )
                         except:
                             return
-        return await mystic(client, CallbackQuery, _)
+        try:
+            return await mystic(client, CallbackQuery, _)
+        except QueryIdInvalid:
+            LOGGER.debug("Callback query expired, ignoring")
+        except MessageNotModified:
+            LOGGER.debug("Message not modified, ignoring")
+        except Exception as e:
+            LOGGER.error(f"Error in callback: {e}")
 
     return wrapper

@@ -100,15 +100,6 @@ async def close_menu(_, CallbackQuery):
         return
 
 
-@app.on_callback_query(filters.regex("close") & ~BANNED_USERS)
-async def close_menu(_, CallbackQuery):
-    try:
-        await CallbackQuery.message.delete()
-        await CallbackQuery.answer()
-    except:
-        return
-
-
 @app.on_callback_query(
     filters.regex("stop_downloading") & ~BANNED_USERS
 )

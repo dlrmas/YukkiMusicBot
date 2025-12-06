@@ -95,33 +95,31 @@ async def helper_cb(client, CallbackQuery, _):
     callback_data = CallbackQuery.data.strip()
     cb = callback_data.split(None, 1)[1]
     keyboard = help_back_markup(_)
-    if cb == "hb5":
-        if CallbackQuery.from_user.id not in SUDOERS:
-            return await CallbackQuery.answer(
-                "Only for Sudo Users", show_alert=True
-            )
-        else:
-            await CallbackQuery.edit_message_text(
-                helpers.HELP_5, reply_markup=keyboard
-            )
-            return await CallbackQuery.answer()
+    
+    # Answer callback first to prevent QUERY_ID_INVALID
     try:
         await CallbackQuery.answer()
     except:
         pass
-    if cb == "hb1":
-        await CallbackQuery.edit_message_text(
-            helpers.HELP_1, reply_markup=keyboard
-        )
+    
+    if cb == "hb5":
+        if CallbackQuery.from_user.id not in SUDOERS:
+            return
+        help_text = helpers.HELP_5
+    elif cb == "hb1":
+        help_text = helpers.HELP_1
     elif cb == "hb2":
-        await CallbackQuery.edit_message_text(
-            helpers.HELP_2, reply_markup=keyboard
-        )
+        help_text = helpers.HELP_2
     elif cb == "hb3":
-        await CallbackQuery.edit_message_text(
-            helpers.HELP_3, reply_markup=keyboard
-        )
+        help_text = helpers.HELP_3
     elif cb == "hb4":
+        help_text = helpers.HELP_4
+    else:
+        return
+    
+    try:
         await CallbackQuery.edit_message_text(
-            helpers.HELP_4, reply_markup=keyboard
+            help_text, reply_markup=keyboard
         )
+    except:
+        pass

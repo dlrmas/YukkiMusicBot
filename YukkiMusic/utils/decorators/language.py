@@ -10,11 +10,16 @@
 # Fix bug dan update https://github.com/dlrmas
 #
 
+import logging
+
+from pyrogram.errors import QueryIdInvalid, MessageNotModified
 
 from strings import get_string
 from YukkiMusic.misc import SUDOERS
 from YukkiMusic.utils.database import (get_lang, is_commanddelete_on,
                                        is_maintenance)
+
+LOGGER = logging.getLogger(__name__)
 
 
 def language(mystic):
@@ -43,16 +48,26 @@ def languageCB(mystic):
     async def wrapper(_, CallbackQuery, **kwargs):
         if await is_maintenance() is False:
             if CallbackQuery.from_user.id not in SUDOERS:
-                return await CallbackQuery.answer(
-                    "Bot is under maintenance. Please wait for some time...",
-                    show_alert=True,
-                )
+                try:
+                    return await CallbackQuery.answer(
+                        "Bot is under maintenance. Please wait for some time...",
+                        show_alert=True,
+                    )
+                except QueryIdInvalid:
+                    return
         try:
             language = await get_lang(CallbackQuery.message.chat.id)
             language = get_string(language)
         except:
             language = get_string("en")
-        return await mystic(_, CallbackQuery, language)
+        try:
+            return await mystic(_, CallbackQuery, language)
+        except QueryIdInvalid:
+            LOGGER.debug("Callback query expired, ignoring")
+        except MessageNotModified:
+            LOGGER.debug("Message not modified, ignoring")
+        except Exception as e:
+            LOGGER.error(f"Error in callback: {e}")
 
     return wrapper
 
