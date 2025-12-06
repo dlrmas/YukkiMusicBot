@@ -66,13 +66,13 @@ async def dont_do_this():
                             string = random.choice(strings)
                     suggestor[x] = string.split("_")[1]
                     try:
-                        msg = _["sug_0"] + _[string]
+                        msg = _("sug_0") + _[string]
                         sent = await app.send_message(x, msg)
                         if x not in clean:
                             clean[x] = []
                         time_now = datetime.now()
                         put = {
-                            "msg_id": sent.message_id,
+                            "msg_id": sent.id,
                             "timer_after": time_now
                             + timedelta(
                                 minutes=config.CLEANMODE_DELETE_MINS

@@ -8,6 +8,7 @@
 # All rights reserved.
 
 import asyncio
+import os
 from datetime import datetime, timedelta
 from typing import Union
 
@@ -57,6 +58,13 @@ counter = {}
 AUTO_END_TIME = 3
 
 
+def ensure_absolute_path(path: str) -> str:
+    """Convert relative file paths to absolute paths for py-tgcalls compatibility."""
+    if path and not path.startswith(('http://', 'https://', 'rtmp://')):
+        return os.path.abspath(path)
+    return path
+
+
 async def _clear_(chat_id):
     db[chat_id] = []
     await remove_active_video_chat(chat_id)
@@ -103,19 +111,19 @@ class Call(PyTgCalls):
 
     async def pause_stream(self, chat_id: int):
         assistant = await group_assistant(self, chat_id)
-        await assistant.pause_stream(chat_id)
+        await assistant.pause(chat_id)
 
     async def resume_stream(self, chat_id: int):
         assistant = await group_assistant(self, chat_id)
-        await assistant.resume_stream(chat_id)
+        await assistant.resume(chat_id)
 
     async def mute_stream(self, chat_id: int):
         assistant = await group_assistant(self, chat_id)
-        await assistant.mute_stream(chat_id)
+        await assistant.mute(chat_id)
 
     async def unmute_stream(self, chat_id: int):
         assistant = await group_assistant(self, chat_id)
-        await assistant.unmute_stream(chat_id)
+        await assistant.unmute(chat_id)
 
     async def stop_stream(self, chat_id: int):
         assistant = await group_assistant(self, chat_id)
@@ -145,16 +153,25 @@ class Call(PyTgCalls):
         assistant = await group_assistant(self, chat_id)
         audio_stream_quality = await get_audio_bitrate(chat_id)
         video_stream_quality = await get_video_bitrate(chat_id)
+        
+        # Ensure absolute path for file streams
+        link = ensure_absolute_path(link)
+        
+        LOGGER(__name__).info(f"skip_stream - video={video}, link={link}")
+        
         if video:
             stream = MediaStream(
                 link,
                 audio_parameters=audio_stream_quality,
                 video_parameters=video_stream_quality,
+                audio_flags=MediaStream.Flags.REQUIRED,
+                video_flags=MediaStream.Flags.REQUIRED,
             )
         else:
             stream = MediaStream(
                 link,
                 audio_parameters=audio_stream_quality,
+                audio_flags=MediaStream.Flags.REQUIRED,
                 video_flags=MediaStream.Flags.IGNORE,
             )
         await assistant.play(chat_id, stream)
@@ -165,17 +182,26 @@ class Call(PyTgCalls):
         assistant = await group_assistant(self, chat_id)
         audio_stream_quality = await get_audio_bitrate(chat_id)
         video_stream_quality = await get_video_bitrate(chat_id)
+        
+        # Ensure absolute path for file streams
+        file_path = ensure_absolute_path(file_path)
+        
+        LOGGER(__name__).info(f"seek_stream - mode={mode}, file_path={file_path}")
+        
         if mode == "video":
             stream = MediaStream(
                 file_path,
                 audio_parameters=audio_stream_quality,
                 video_parameters=video_stream_quality,
+                audio_flags=MediaStream.Flags.REQUIRED,
+                video_flags=MediaStream.Flags.REQUIRED,
                 ffmpeg_parameters=f"-ss {to_seek} -to {duration}",
             )
         else:
             stream = MediaStream(
                 file_path,
                 audio_parameters=audio_stream_quality,
+                audio_flags=MediaStream.Flags.REQUIRED,
                 video_flags=MediaStream.Flags.IGNORE,
                 ffmpeg_parameters=f"-ss {to_seek} -to {duration}",
             )
@@ -259,18 +285,30 @@ class Call(PyTgCalls):
         assistant = await group_assistant(self, chat_id)
         audio_stream_quality = await get_audio_bitrate(chat_id)
         video_stream_quality = await get_video_bitrate(chat_id)
+        
+        # Ensure absolute path for file streams
+        link = ensure_absolute_path(link)
+        
+        LOGGER(__name__).info(f"join_call - video={video}, link={link}")
+        LOGGER(__name__).info(f"audio_quality={audio_stream_quality}, video_quality={video_stream_quality}")
+        
         if video:
             stream = MediaStream(
                 link,
                 audio_parameters=audio_stream_quality,
                 video_parameters=video_stream_quality,
+                audio_flags=MediaStream.Flags.REQUIRED,
+                video_flags=MediaStream.Flags.REQUIRED,
             )
+            LOGGER(__name__).info("Created MediaStream WITH video (REQUIRED flags)")
         else:
             stream = MediaStream(
                 link,
                 audio_parameters=audio_stream_quality,
+                audio_flags=MediaStream.Flags.REQUIRED,
                 video_flags=MediaStream.Flags.IGNORE,
             )
+            LOGGER(__name__).info("Created MediaStream WITHOUT video (audio only)")
         
         # First, ensure assistant is in the chat
         try:
@@ -280,11 +318,19 @@ class Call(PyTgCalls):
         
         try:
             await assistant.play(chat_id, stream)
+            LOGGER(__name__).info(f"Successfully called assistant.play() for chat_id={chat_id}")
+            
+            # Log stream details after check_stream is called internally
+            LOGGER(__name__).info(f"Stream microphone: {stream.microphone is not None}")
+            LOGGER(__name__).info(f"Stream camera: {stream.camera is not None}")
+            if stream.camera:
+                LOGGER(__name__).info(f"Camera media_source: {stream.camera.media_source}")
         except NoActiveGroupCall:
             raise AssistantErr(
                 "**No Active Voice Chat Found**\n\nPlease make sure group's voice chat is enabled. If already enabled, please end it and start fresh voice chat again and if the problem continues, try /restart"
             )
         except Exception as e:
+            LOGGER(__name__).error(f"Failed to play stream: {e}")
             raise AssistantErr(
                 f"**Failed to join voice chat**\n\n{str(e)}"
             )
@@ -347,11 +393,14 @@ class Call(PyTgCalls):
                         link,
                         audio_parameters=audio_stream_quality,
                         video_parameters=video_stream_quality,
+                        audio_flags=MediaStream.Flags.REQUIRED,
+                        video_flags=MediaStream.Flags.REQUIRED,
                     )
                 else:
                     stream = MediaStream(
                         link,
                         audio_parameters=audio_stream_quality,
+                        audio_flags=MediaStream.Flags.REQUIRED,
                         video_flags=MediaStream.Flags.IGNORE,
                     )
                 try:
@@ -391,16 +440,21 @@ class Call(PyTgCalls):
                     return await mystic.edit_text(
                         _["call_9"], disable_web_page_preview=True
                     )
+                # Ensure absolute path for video files
+                file_path = ensure_absolute_path(file_path)
                 if str(streamtype) == "video":
                     stream = MediaStream(
                         file_path,
                         audio_parameters=audio_stream_quality,
                         video_parameters=video_stream_quality,
+                        audio_flags=MediaStream.Flags.REQUIRED,
+                        video_flags=MediaStream.Flags.REQUIRED,
                     )
                 else:
                     stream = MediaStream(
                         file_path,
                         audio_parameters=audio_stream_quality,
+                        audio_flags=MediaStream.Flags.REQUIRED,
                         video_flags=MediaStream.Flags.IGNORE,
                     )
                 try:
@@ -430,11 +484,14 @@ class Call(PyTgCalls):
                         videoid,
                         audio_parameters=audio_stream_quality,
                         video_parameters=video_stream_quality,
+                        audio_flags=MediaStream.Flags.REQUIRED,
+                        video_flags=MediaStream.Flags.REQUIRED,
                     )
                 else:
                     stream = MediaStream(
                         videoid,
                         audio_parameters=audio_stream_quality,
+                        audio_flags=MediaStream.Flags.REQUIRED,
                         video_flags=MediaStream.Flags.IGNORE,
                     )
                 try:
@@ -454,16 +511,21 @@ class Call(PyTgCalls):
                 db[chat_id][0]["mystic"] = run
                 db[chat_id][0]["markup"] = "tg"
             else:
+                # Ensure absolute path for local files
+                queued_path = ensure_absolute_path(queued)
                 if str(streamtype) == "video":
                     stream = MediaStream(
-                        queued,
+                        queued_path,
                         audio_parameters=audio_stream_quality,
                         video_parameters=video_stream_quality,
+                        audio_flags=MediaStream.Flags.REQUIRED,
+                        video_flags=MediaStream.Flags.REQUIRED,
                     )
                 else:
                     stream = MediaStream(
-                        queued,
+                        queued_path,
                         audio_parameters=audio_stream_quality,
+                        audio_flags=MediaStream.Flags.REQUIRED,
                         video_flags=MediaStream.Flags.IGNORE,
                     )
                 try:

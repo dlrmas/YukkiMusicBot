@@ -188,27 +188,18 @@ class YouTubeAPI:
         return thumbnail
 
     async def video(self, link: str, videoid: Union[bool, str] = None):
+        """
+        Get video stream URL for py-tgcalls.
+        Returns the YouTube URL directly - py-tgcalls has built-in yt-dlp 
+        integration that handles video extraction automatically.
+        """
         if videoid:
             link = self.base + link
         if "&" in link:
             link = link.split("&")[0]
         
-        cookie_file = get_cookie_file()
-        cmd = ["yt-dlp", "-g", "-f", "best[height<=?720][width<=?1280]", link]
-        if cookie_file:
-            cmd.insert(1, "--cookies")
-            cmd.insert(2, cookie_file)
-        
-        proc = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout, stderr = await proc.communicate()
-        if stdout:
-            return 1, stdout.decode().split("\n")[0]
-        else:
-            return 0, stderr.decode()
+        LOGGER(__name__).info(f"Returning YouTube URL for video streaming: {link}")
+        return 1, link
 
     async def playlist(self, link, limit, user_id, videoid: Union[bool, str] = None):
         if videoid:
@@ -337,12 +328,13 @@ class YouTubeAPI:
 
         def video_dl():
             ydl_optssx = get_ytdl_options({
-                "format": "(bestvideo[height<=?720][width<=?1280][ext=mp4])+(bestaudio[ext=m4a])",
+                "format": "bestvideo[height<=?720][width<=?1280][ext=mp4]+bestaudio[ext=m4a]/best[height<=?720][ext=mp4]/best",
                 "outtmpl": "downloads/%(id)s.%(ext)s",
+                "merge_output_format": "mp4",
             })
             x = yt_dlp.YoutubeDL(ydl_optssx)
             info = x.extract_info(link, False)
-            xyz = os.path.join("downloads", f"{info['id']}.{info['ext']}")
+            xyz = os.path.join("downloads", f"{info['id']}.mp4")
             if os.path.exists(xyz):
                 return xyz
             x.download([link])
@@ -395,39 +387,11 @@ class YouTubeAPI:
             fpath = await loop.run_in_executor(None, song_audio_dl)
             return fpath
         elif video:
-            if await is_on_off(config.YTDOWNLOADER):
-                direct = True
-                downloaded_file = await loop.run_in_executor(None, video_dl)
-            else:
-                cookie_file = get_cookie_file()
-                cmd = ["yt-dlp", "-g", "-f", "best[height<=?720][width<=?1280]", link]
-                if cookie_file:
-                    cmd.insert(1, "--cookies")
-                    cmd.insert(2, cookie_file)
-                
-                proc = await asyncio.create_subprocess_exec(
-                    *cmd,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE,
-                )
-                stdout, stderr = await proc.communicate()
-                if stdout:
-                    downloaded_file = stdout.decode().split("\n")[0]
-                    direct = False
-                else:
-                    # Fallback: check file size and download if small enough
-                    file_size = await check_file_size(link)
-                    if not file_size:
-                        LOGGER(__name__).warning("Unable to determine file size")
-                        return None, None
-                    total_size_mb = file_size / (1024 * 1024)
-                    if total_size_mb > 250:
-                        LOGGER(__name__).warning(
-                            f"File size {total_size_mb:.2f} MB exceeds the 250MB limit."
-                        )
-                        return None, None
-                    direct = True
-                    downloaded_file = await loop.run_in_executor(None, video_dl)
+            # For py-tgcalls 2.x, always download video for better compatibility
+            # Direct streaming from YouTube HLS URLs does not work properly
+            # because py-tgcalls cannot parse video track from HLS manifests
+            direct = True
+            downloaded_file = await loop.run_in_executor(None, video_dl)
         else:
             direct = True
             downloaded_file = await loop.run_in_executor(None, audio_dl)
