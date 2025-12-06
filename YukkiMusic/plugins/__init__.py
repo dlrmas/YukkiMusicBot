@@ -7,6 +7,9 @@
 #
 # All rights reserved.
 #
+# Fix bug dan update https://github.com/dlrmas
+#
+#
 
 import glob
 from os.path import dirname, isfile

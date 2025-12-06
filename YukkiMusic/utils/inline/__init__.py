@@ -6,6 +6,9 @@
 # Please see < https://github.com/TeamYukki/YukkiMusicBot/blob/master/LICENSE >
 #
 # All rights reserved.
+#
+# Fix bug dan update https://github.com/dlrmas
+#
 
 from .help import *
 from .play import *

@@ -7,5 +7,8 @@
 #
 # All rights reserved.
 #
+# Fix bug dan update https://github.com/dlrmas
+#
+#
 
 from .config import *

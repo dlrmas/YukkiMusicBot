@@ -6,6 +6,9 @@
 # Please see < https://github.com/TeamYukki/YukkiMusicBot/blob/master/LICENSE >
 #
 # All rights reserved.
+#
+# Fix bug dan update https://github.com/dlrmas
+#
 
 from YukkiMusic import app
 from YukkiMusic.utils.database import get_cmode

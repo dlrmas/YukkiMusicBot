@@ -6,6 +6,9 @@
 # Please see < https://github.com/TeamYukki/YukkiMusicBot/blob/master/LICENSE >
 #
 # All rights reserved.
+#
+# Fix bug dan update https://github.com/dlrmas
+#
 
 from config import LOG, LOG_GROUP_ID
 from YukkiMusic import app

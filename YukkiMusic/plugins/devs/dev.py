@@ -7,6 +7,9 @@
 #
 # All rights reserved.
 #
+# Fix bug dan update https://github.com/dlrmas
+#
+#
 # This aeval and sh module is taken from < https://github.com/TheHamkerCat/WilliamButcherBot >
 # Credit goes to TheHamkerCat.
 #
