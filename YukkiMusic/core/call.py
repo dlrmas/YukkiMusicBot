@@ -157,8 +157,6 @@ class Call(PyTgCalls):
         # Ensure absolute path for file streams
         link = ensure_absolute_path(link)
         
-        LOGGER(__name__).info(f"skip_stream - video={video}, link={link}")
-        
         if video:
             stream = MediaStream(
                 link,
@@ -185,8 +183,6 @@ class Call(PyTgCalls):
         
         # Ensure absolute path for file streams
         file_path = ensure_absolute_path(file_path)
-        
-        LOGGER(__name__).info(f"seek_stream - mode={mode}, file_path={file_path}")
         
         if mode == "video":
             stream = MediaStream(
@@ -289,9 +285,6 @@ class Call(PyTgCalls):
         # Ensure absolute path for file streams
         link = ensure_absolute_path(link)
         
-        LOGGER(__name__).info(f"join_call - video={video}, link={link}")
-        LOGGER(__name__).info(f"audio_quality={audio_stream_quality}, video_quality={video_stream_quality}")
-        
         if video:
             stream = MediaStream(
                 link,
@@ -300,7 +293,6 @@ class Call(PyTgCalls):
                 audio_flags=MediaStream.Flags.REQUIRED,
                 video_flags=MediaStream.Flags.REQUIRED,
             )
-            LOGGER(__name__).info("Created MediaStream WITH video (REQUIRED flags)")
         else:
             stream = MediaStream(
                 link,
@@ -308,7 +300,6 @@ class Call(PyTgCalls):
                 audio_flags=MediaStream.Flags.REQUIRED,
                 video_flags=MediaStream.Flags.IGNORE,
             )
-            LOGGER(__name__).info("Created MediaStream WITHOUT video (audio only)")
         
         # First, ensure assistant is in the chat
         try:
@@ -318,13 +309,6 @@ class Call(PyTgCalls):
         
         try:
             await assistant.play(chat_id, stream)
-            LOGGER(__name__).info(f"Successfully called assistant.play() for chat_id={chat_id}")
-            
-            # Log stream details after check_stream is called internally
-            LOGGER(__name__).info(f"Stream microphone: {stream.microphone is not None}")
-            LOGGER(__name__).info(f"Stream camera: {stream.camera is not None}")
-            if stream.camera:
-                LOGGER(__name__).info(f"Camera media_source: {stream.camera.media_source}")
         except NoActiveGroupCall:
             raise AssistantErr(
                 "**No Active Voice Chat Found**\n\nPlease make sure group's voice chat is enabled. If already enabled, please end it and start fresh voice chat again and if the problem continues, try /restart"
