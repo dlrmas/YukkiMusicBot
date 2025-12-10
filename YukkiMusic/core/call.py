@@ -111,6 +111,9 @@ class Call(PyTgCalls):
             session_string=str(config.STRING5),
         )
         self.five = PyTgCalls(self.userbot5)
+        # Track initialization state to prevent double start
+        self._started = False
+        self._starting = False
 
     async def pause_stream(self, chat_id: int):
         assistant = await group_assistant(self, chat_id)
@@ -312,6 +315,11 @@ class Call(PyTgCalls):
         
         try:
             await assistant.play(chat_id, stream)
+        except ChatAdminRequired:
+            LOGGER(__name__).error(f"Failed to play stream: Chat admin required")
+            raise AssistantErr(
+                "**Bot doesn't have Admin Rights**\n\nPlease make sure I have admin rights with permission to manage voice chats"
+            )
         except NoActiveGroupCall:
             raise AssistantErr(
                 "**No Active Voice Chat Found**\n\nPlease make sure group's voice chat is enabled. If already enabled, please end it and start fresh voice chat again and if the problem continues, try /restart"
@@ -578,17 +586,42 @@ class Call(PyTgCalls):
         return str(round(sum(pings) / len(pings), 3))
 
     async def start(self):
+        # Prevent multiple initialization
+        if self._started or self._starting:
+            LOGGER(__name__).debug("PyTgCalls already started or starting")
+            return
+        
+        self._starting = True
         LOGGER(__name__).info("Starting PyTgCalls Client\n")
-        if config.STRING1:
-            await self.one.start()
-        if config.STRING2:
-            await self.two.start()
-        if config.STRING3:
-            await self.three.start()
-        if config.STRING4:
-            await self.four.start()
-        if config.STRING5:
-            await self.five.start()
+        try:
+            if config.STRING1:
+                try:
+                    await self.one.start()
+                except Exception as e:
+                    LOGGER(__name__).error(f"Failed to start assistant1: {e}")
+            if config.STRING2:
+                try:
+                    await self.two.start()
+                except Exception as e:
+                    LOGGER(__name__).error(f"Failed to start assistant2: {e}")
+            if config.STRING3:
+                try:
+                    await self.three.start()
+                except Exception as e:
+                    LOGGER(__name__).error(f"Failed to start assistant3: {e}")
+            if config.STRING4:
+                try:
+                    await self.four.start()
+                except Exception as e:
+                    LOGGER(__name__).error(f"Failed to start assistant4: {e}")
+            if config.STRING5:
+                try:
+                    await self.five.start()
+                except Exception as e:
+                    LOGGER(__name__).error(f"Failed to start assistant5: {e}")
+            self._started = True
+        finally:
+            self._starting = False
 
     async def decorators(self):
         @self.one.on_update()
