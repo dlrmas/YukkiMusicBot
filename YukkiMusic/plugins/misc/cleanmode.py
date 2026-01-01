@@ -127,7 +127,7 @@ async def braodcast_message(client, message, _):
                         continue
                 sent += 1
             except FloodWait as e:
-                flood_time = int(e.x)
+                flood_time = int(e.value)
                 if flood_time > 200:
                     continue
                 await asyncio.sleep(flood_time)
@@ -154,7 +154,7 @@ async def braodcast_message(client, message, _):
                 )
                 susr += 1
             except FloodWait as e:
-                flood_time = int(e.x)
+                flood_time = int(e.value)
                 if flood_time > 200:
                     continue
                 await asyncio.sleep(flood_time)
@@ -185,7 +185,7 @@ async def braodcast_message(client, message, _):
                     )
                     sent += 1
                 except FloodWait as e:
-                    flood_time = int(e.x)
+                    flood_time = int(e.value)
                     if flood_time > 200:
                         continue
                     await asyncio.sleep(flood_time)
@@ -254,7 +254,7 @@ async def auto_clean():
                                 chat_id, x["msg_id"]
                             )
                         except FloodWait as e:
-                            await asyncio.sleep(e.x)
+                            await asyncio.sleep(e.value)
                         except:
                             continue
                     else:

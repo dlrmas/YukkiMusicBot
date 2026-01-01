@@ -179,8 +179,16 @@ class TeleAPI:
                     "Successfully Downloaded.. Processing file now"
                 )
                 downloader.pop(message.id)
-            except:
-                await mystic.edit_text(_["tg_2"])
+            except FileNotFoundError:
+                try:
+                    await mystic.edit_text(_["tg_2"])
+                except:
+                    pass
+            except Exception as e:
+                try:
+                    await mystic.edit_text(_["tg_2"])
+                except:
+                    pass
 
         if len(downloader) > 10:
             timers = []

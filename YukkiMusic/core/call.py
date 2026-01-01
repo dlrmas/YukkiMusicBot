@@ -19,7 +19,8 @@ from pyrogram import Client
 from pyrogram.enums import ChatMemberStatus
 from pyrogram.errors import (ChatAdminRequired,
                              UserAlreadyParticipant,
-                             UserNotParticipant)
+                             UserNotParticipant,
+                             GroupcallInvalid)
 from pyrogram.types import InlineKeyboardMarkup
 
 from pytgcalls import PyTgCalls
@@ -320,12 +321,22 @@ class Call(PyTgCalls):
             raise AssistantErr(
                 "**Bot doesn't have Admin Rights**\n\nPlease make sure I have admin rights with permission to manage voice chats"
             )
+        except GroupcallInvalid:
+            raise AssistantErr(
+                "**Voice Chat Not Active**\n\nPlease start a voice chat in this group first, then try again."
+            )
         except NoActiveGroupCall:
             raise AssistantErr(
                 "**No Active Voice Chat Found**\n\nPlease make sure group's voice chat is enabled. If already enabled, please end it and start fresh voice chat again and if the problem continues, try /restart"
             )
         except Exception as e:
             LOGGER(__name__).error(f"Failed to play stream: {e}")
+            # Check for GROUPCALL_INVALID in error message
+            err_str = str(e).upper()
+            if "GROUPCALL_INVALID" in err_str or "GROUPCALL" in err_str:
+                raise AssistantErr(
+                    "**Voice Chat Not Active**\n\nPlease start a voice chat in this group first, then try again."
+                )
             raise AssistantErr(
                 f"**Failed to join voice chat**\n\n{str(e)}"
             )
